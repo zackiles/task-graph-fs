@@ -1,0 +1,49 @@
+# TaskGraphFS specific
+tgfs-state.json
+
+# Go specific
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace file
+go.work
+
+# Build directory
+bin/
+dist/
+
+# IDE specific
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Test coverage
+coverage.txt
+coverage.html
+
+# Debug files
+__debug_bin
+debug.test
+
+# Environment variables
+.env
+.env.local
+
+# Dependency directories (remove if using go modules with vendor)
+vendor/
