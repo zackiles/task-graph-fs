@@ -14,7 +14,8 @@ If you can use a file explorer, you already know how to use TaskGraphFS.
 
 ### Graph to Filesystem Mapping
 
-TaskGraphFS maps directed acyclic graphs (DAGs) to your filesystem:
+Never write a complicated directed graph in LangGraph again!
+
 - **Workflows (Subgraphs)** → Directories
 - **Tasks (Nodes)** → Markdown Files
 - **Dependencies (Edges)** → Symbolic Links
