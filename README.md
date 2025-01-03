@@ -4,7 +4,7 @@
 
 ## Overview
 
-TaskGraphFS lets you express complex graph-based workflows using nothing more than the filesystem. Define workflows as folders, tasks as files, and dependencies as symbolic links. Use plain English in markdown files to describe tasks, and TaskGraphFS’s built-in LLM capabilities will handle the rest.
+TaskGraphFS lets you express complex graph-based workflows using nothing more than the filesystem. Define workflows as folders, tasks as files, and dependencies as symbolic links. Use plain English in markdown files to describe tasks, and TaskGraphFS's built-in LLM capabilities will handle the rest.
 
 - No new languages to learn.
 - No rigid schema formats.
@@ -12,9 +12,18 @@ TaskGraphFS lets you express complex graph-based workflows using nothing more th
 
 If you can use a file explorer, you already know how to use TaskGraphFS.
 
+### Graph to Filesystem Mapping
+
+TaskGraphFS maps directed acyclic graphs (DAGs) to your filesystem:
+- **Workflows (Subgraphs)** → Directories
+- **Tasks (Nodes)** → Markdown Files
+- **Dependencies (Edges)** → Symbolic Links
+- **Task Properties** → Markdown Content
+- **Nested Workflows** → Subdirectories
+
 ## Why TaskGraphFS?
 
-The rise of AI has brought a flood of new frameworks with complex abstractions for defining workflows and managing state. Most rely on proprietary formats or rigid schemas, creating unnecessary barriers. TaskGraphFS takes a simpler approach: it uses the filesystem as the interface and plain English for task definitions, with LLMs handling the complexity. It’s intuitive, interoperable, and built to align with AI’s promise of natural, human-first workflows.
+The rise of AI has brought a flood of new frameworks with complex abstractions for defining workflows and managing state. Most rely on proprietary formats or rigid schemas, creating unnecessary barriers. TaskGraphFS takes a simpler approach: it uses the filesystem as the interface and plain English for task definitions, with LLMs handling the complexity. It's intuitive, interoperable, and built to align with AI's promise of natural, human-first workflows.
 
 ## Getting Started
 
@@ -193,13 +202,33 @@ These properties (Command, Dependencies, Priority, Retries, Timeout) are the sch
 ## Example Workflow Structure
 
 ```
-my-workflow/
-├── fetch-data.md
-├── process-data.md
-├── process-data_dependencies -> fetch-data.md
-├── analyze-results.md
-└── analyze-results_dependencies -> process-data.md
+workflows/
+├── data-pipeline/
+│   ├── fetch-data.md
+│   ├── clean-data.md
+│   ├── clean-data_dependencies -> fetch-data.md
+│   ├── transform-data.md
+│   ├── transform-data_dependencies -> clean-data.md
+│   └── nested/
+│       ├── aggregate-daily.md
+│       ├── aggregate-daily_dependencies -> ../transform-data.md
+│       ├── compute-metrics.md
+│       └── compute-metrics_dependencies -> aggregate-daily.md
+│
+└── model-training/
+    ├── prepare-features.md
+    ├── prepare-features_dependencies -> ../data-pipeline/transform-data.md
+    ├── train-model.md
+    ├── train-model_dependencies -> prepare-features.md
+    ├── evaluate-model.md
+    └── evaluate-model_dependencies -> train-model.md
 ```
+
+This structure shows:
+- Multiple top-level workflows (`data-pipeline` and `model-training`)
+- Nested workflows (under `data-pipeline/nested`)
+- Cross-workflow dependencies (model training depending on data pipeline)
+- Proper relative symlinks for dependency edges
 
 ## State Management
 
