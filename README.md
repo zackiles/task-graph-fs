@@ -1,30 +1,26 @@
 # TaskGraphFS
 
-**The incredibly simple and astonishingly powerful task engine for humans.** Build and run complex workflows using only files, folders, symlinks, and natural language.
+**The incredibly simple and astonishingly powerful execution-agnostic workflow definition engine.** Build and run complex workflows using only files, folders, symlinks, and natural language.
 
 ## Overview
 
-TaskGraphFS lets you express complex graph-based workflows using nothing more than the filesystem. Define workflows as folders, tasks as files, and dependencies as symbolic links. Use plain English in markdown files to describe tasks, and TaskGraphFS's built-in LLM capabilities will handle the rest.
+TaskGraphFS is an execution-agnostic workflow definition engine. Express complex graph-based workflows, along with their tasks, inputs, outputs, and depedencies, using only files, folders, symlinks, and natural language. Plan and apply your workflows as you would Terraform, passing it's configuration and state to an execution engine of your choice. No new DSLs, SDKs, schemas, formats, or user interfaces to learn. If you can use a file explorer, you already know how to use TaskGraphFS.
 
-- No new languages to learn.
-- No rigid schema formats.
-- No complex user interfaces to master.
+### File Systems as a Graph
 
-If you can use a file explorer, you already know how to use TaskGraphFS.
+If we consider a workflow as a graph, we can map the graph to the filesystem as follows:
 
-### Graph to Filesystem Mapping
-
-Never write a complicated directed graph in LangGraph again!
-
-- **Workflows (Subgraphs)** → Directories
-- **Tasks (Nodes)** → Markdown Files
+- **Workflows (Subgraphs)** → Directories.
+- **Tasks (Nodes)** → Files
 - **Dependencies (Edges)** → Symbolic Links
-- **Task Properties** → Markdown Content
+- **Task Properties** → Natural language in the files
 - **Nested Workflows** → Subdirectories
 
-## Why TaskGraphFS?
+For an example of a workflow expressed in this way, see the [example workflow structure](#example-workflow-structure).
 
-The rise of AI has brought a flood of new frameworks with complex abstractions for defining workflows and managing state. Most rely on proprietary formats or rigid schemas, creating unnecessary barriers. TaskGraphFS takes a simpler approach: it uses the filesystem as the interface and plain English for task definitions, with LLMs handling the complexity. It's intuitive, interoperable, and built to align with AI's promise of natural, human-first workflows.
+### Why TaskGraphFS?
+
+Because running mkdir, touch, and then piping a few sentences into a file to create workflows is an unmatched user experience. The rise of AI is spwaning 1000s of new task and agentic workflow frameworks each week, but beyond a few attempting to standardize around projects like Langraph and BAML, most bring completely new concepts to the table. As sand castles, they have little interopbility at a time we need the most, and as such they're forced to bring the entire kitchen sync to compensate for that lack of integration. Given the promise that LLMs bring through the power of natural language, it's also surprising every abstraction for workflows so far has been anything but natural language. TaskGraphFS tries to do one thing and do it well: provide a simple, natural language interface for planning and managing complex workflows.
 
 ## Getting Started
 
