@@ -467,6 +467,74 @@ func TestStateRecovery(t *testing.T) {
 	verifyTaskState(t, finalState, "recovery", "taskB", "completed")
 }
 
+func TestNestedWorkflows(t *testing.T) {
+	env := setupTest(t)
+
+	// Create nested workflow structure
+	nestedWorkflows := []struct {
+		path string
+		task string
+	}{
+		{filepath.Join("parent", "child1", "workflow"), "taskA"},
+		{filepath.Join("parent", "child2", "workflow"), "taskB"},
+		{filepath.Join("parent", "child1", "child2", "workflow"), "taskC"},
+	}
+
+	for _, nw := range nestedWorkflows {
+		// Create workflow directory
+		workflowPath := filepath.Join(env.rootDir, nw.path)
+		if err := os.MkdirAll(workflowPath, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		// Create task file
+		err := createTestWorkflow(workflowPath, "", []string{nw.task})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Set up mock response
+		env.mockGopilot.SetResponse(
+			filepath.Join(workflowPath, nw.task+".md"),
+			gopilotcli.TaskResponse{
+				Command:      fmt.Sprintf("echo %s", nw.task),
+				Dependencies: []string{},
+				Priority:     "medium",
+				Retries:      1,
+				Timeout:      "5m",
+			},
+		)
+	}
+
+	// Test plan command
+	t.Run("plan nested workflows", func(t *testing.T) {
+		args := []string{"plan"}
+		if err := executeCommand(args...); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	// Test apply command
+	t.Run("apply nested workflows", func(t *testing.T) {
+		args := []string{"apply", "--auto-approve"}
+		if err := executeCommand(args...); err != nil {
+			t.Fatal(err)
+		}
+
+		// Verify state file
+		state, err := loadState(filepath.Join(env.rootDir, "tgfs-state.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Verify each nested workflow
+		for _, nw := range nestedWorkflows {
+			verifyWorkflowState(t, state, nw.path, "completed")
+			verifyTaskState(t, state, nw.path, nw.task, "completed")
+		}
+	})
+}
+
 // Helper function to execute CLI commands in tests
 func executeCommand(args ...string) error {
 	cmd := commands.NewRootCommand()

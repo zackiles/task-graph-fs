@@ -21,21 +21,37 @@ func NewParser(gopilot gopilotcli.GopilotCLI) *Parser {
 func (p *Parser) ParseWorkflows(basePath string) ([]Workflow, error) {
 	var workflows []Workflow
 
-	entries, err := os.ReadDir(basePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read directory: %w", err)
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		workflow, err := p.parseWorkflow(filepath.Join(basePath, entry.Name()))
+	// Walk through all directories recursively
+	err := filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse workflow %s: %w", entry.Name(), err)
+			return err
 		}
-		workflows = append(workflows, workflow)
+
+		// Skip if not a directory or if it's the base path
+		if !info.IsDir() || path == basePath {
+			return nil
+		}
+
+		// Skip hidden directories and non-workflow directories
+		if strings.HasPrefix(info.Name(), ".") || isProjectDirectory(info.Name()) {
+			return filepath.SkipDir
+		}
+
+		// Check if directory contains any .md files
+		if containsMarkdownFiles(path) {
+			workflow, err := p.parseWorkflow(path)
+			if err != nil {
+				return fmt.Errorf("failed to parse workflow %s: %w", path, err)
+			}
+			// Set the relative path as the workflow name
+			workflow.Name = strings.TrimPrefix(path, basePath+string(os.PathSeparator))
+			workflows = append(workflows, workflow)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to walk directory: %w", err)
 	}
 
 	return workflows, nil
@@ -79,6 +95,33 @@ func (p *Parser) parseWorkflow(workflowPath string) (Workflow, error) {
 	}
 
 	return workflow, nil
+}
+
+// Helper function to identify project-specific directories
+func isProjectDirectory(name string) bool {
+	projectDirs := map[string]bool{
+		"cmd":      true,
+		"internal": true,
+		"bin":      true,
+		"dist":     true,
+		"vendor":   true,
+	}
+	return projectDirs[name]
+}
+
+// Helper function to check if a directory contains markdown files
+func containsMarkdownFiles(dirPath string) bool {
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return false
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".md") {
+			return true
+		}
+	}
+	return false
 }
 
 func ParseWorkflows(basePath string) ([]Workflow, error) {

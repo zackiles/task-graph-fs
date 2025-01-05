@@ -9,12 +9,13 @@ import (
 )
 
 func newPlanCmd(parser *fsparse.Parser) *cobra.Command {
-	return &cobra.Command{
+	var workflowDir string
+	cmd := &cobra.Command{
 		Use:   "plan",
 		Short: "Show planned changes to workflows and tasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Parse current workflows using the injected parser
-			workflows, err := parser.ParseWorkflows(".")
+			workflows, err := parser.ParseWorkflows(workflowDir)
 			if err != nil {
 				return fmt.Errorf("failed to parse workflows: %w", err)
 			}
@@ -64,6 +65,9 @@ func newPlanCmd(parser *fsparse.Parser) *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.PersistentFlags().StringVarP(&workflowDir, "dir", "d", ".", "Directory containing workflows")
+	return cmd
 }
 
 type taskChangeCount struct {

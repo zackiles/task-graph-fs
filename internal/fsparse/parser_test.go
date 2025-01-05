@@ -84,3 +84,52 @@ medium
 		t.Errorf("expected taskB to depend on taskA, got %v", deps)
 	}
 }
+
+func TestParseNestedWorkflows(t *testing.T) {
+	// Create test directory structure
+	testDir := t.TempDir()
+
+	// Create nested workflow directories
+	nestedPath := filepath.Join(testDir, "parent", "child", "workflow")
+	if err := os.MkdirAll(nestedPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create task file in nested workflow
+	taskContent := `# NestedTask
+## Command
+echo "nested task"
+## Dependencies
+None
+## Priority
+high
+## Retries
+2
+## Timeout
+5m`
+
+	if err := os.WriteFile(filepath.Join(nestedPath, "task.md"), []byte(taskContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Parse workflows
+	workflows, err := ParseWorkflows(testDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify results
+	if len(workflows) != 1 {
+		t.Errorf("expected 1 workflow, got %d", len(workflows))
+	}
+
+	workflow := workflows[0]
+	expectedName := filepath.Join("parent", "child", "workflow")
+	if workflow.Name != expectedName {
+		t.Errorf("expected workflow name '%s', got '%s'", expectedName, workflow.Name)
+	}
+
+	if len(workflow.Tasks) != 1 {
+		t.Errorf("expected 1 task, got %d", len(workflow.Tasks))
+	}
+}
