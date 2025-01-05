@@ -1,18 +1,19 @@
 package integration
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/company/task-graph-fs/internal/fsparse"
+	"github.com/company/task-graph-fs/internal/commands"
 	"github.com/company/task-graph-fs/internal/gopilotcli"
 	"github.com/company/task-graph-fs/internal/state"
-	"github.com/spf13/cobra"
 )
 
 type testEnv struct {
@@ -35,15 +36,61 @@ func TestEndToEnd(t *testing.T) {
 
 	// Test init command
 	t.Run("init command", func(t *testing.T) {
-		args := []string{"init", "-w", "workflow1", "-t", "taskA"}
+		// Create a buffer to simulate stdin with a workflow name
+		input := bytes.NewBufferString("My Workflow 123!\n")
+		oldStdin := os.Stdin
+		defer func() { os.Stdin = oldStdin }()
+
+		// Create a pipe and pass input
+		r, w, err := os.Pipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		os.Stdin = r
+
+		go func() {
+			io.Copy(w, input)
+			w.Close()
+		}()
+
+		// Execute init command
+		args := []string{"init"}
 		if err := executeCommand(args...); err != nil {
 			t.Fatal(err)
 		}
 
 		// Verify directory and file creation
-		taskPath := filepath.Join(env.rootDir, "workflow1", "taskA.md")
+		// Note: The workflow name should be sanitized to "my-workflow-123"
+		taskPath := filepath.Join(env.rootDir, "my-workflow-123", "task.example.md")
 		if _, err := os.Stat(taskPath); os.IsNotExist(err) {
-			t.Error("task file was not created")
+			t.Error("example task file was not created")
+		}
+
+		// Read the created file and verify its contents
+		content, err := os.ReadFile(taskPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		expectedContent := `# Example Task
+
+## Command
+python example_script.py
+
+## Dependencies
+None
+
+## Priority
+medium
+
+## Retries
+1
+
+## Timeout
+30m`
+
+		if strings.TrimSpace(string(content)) != strings.TrimSpace(expectedContent) {
+			t.Error("task file content does not match expected template")
 		}
 	})
 
@@ -422,25 +469,7 @@ func TestStateRecovery(t *testing.T) {
 
 // Helper function to execute CLI commands in tests
 func executeCommand(args ...string) error {
-	cmd := getRootCommand()
+	cmd := commands.NewRootCommand()
 	cmd.SetArgs(args)
 	return cmd.Execute()
-}
-
-func getRootCommand() *cobra.Command {
-	mockGopilot := gopilotcli.NewMockGopilot()
-	parser := fsparse.NewParser(mockGopilot)
-
-	rootCmd := &cobra.Command{
-		Use:   "tgfs",
-		Short: "Filesystem-based task orchestration",
-	}
-
-	rootCmd.AddCommand(
-		newInitCmd(),
-		newPlanCmd(parser),
-		newApplyCmd(parser),
-	)
-
-	return rootCmd
 }

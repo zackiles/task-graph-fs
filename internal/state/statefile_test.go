@@ -7,6 +7,8 @@ import (
 	"github.com/company/task-graph-fs/internal/fsparse"
 )
 
+const StateFileName = "tgfs-state.json"
+
 func TestStateFileOperations(t *testing.T) {
 	// Create test state
 	testState := &StateFile{

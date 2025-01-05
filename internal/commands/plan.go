@@ -1,4 +1,4 @@
-package main
+package commands
 
 import (
 	"fmt"
@@ -124,13 +124,13 @@ func findWorkflow(workflows []fsparse.Workflow, name string) fsparse.Workflow {
 	return fsparse.Workflow{}
 }
 
-func findStateWorkflow(state *state.StateFile, name string) state.WorkflowState {
-	for _, w := range state.Workflows {
-		if w.WorkflowID == name {
-			return w
+func findStateWorkflow(state *state.StateFile, name string) *state.WorkflowState {
+	for i := range state.Workflows {
+		if state.Workflows[i].WorkflowID == name {
+			return &state.Workflows[i]
 		}
 	}
-	return state.WorkflowState{}
+	return nil
 }
 
 func taskExistsInWorkflow(w fsparse.Workflow, taskID string) bool {
@@ -140,24 +140,4 @@ func taskExistsInWorkflow(w fsparse.Workflow, taskID string) bool {
 		}
 	}
 	return false
-}
-
-func taskHasChanges(newTask fsparse.Task, currentTask state.TaskState) bool {
-	return newTask.Command != currentTask.Command ||
-		!stringSlicesEqual(newTask.Dependencies, currentTask.Dependencies) ||
-		newTask.Priority != currentTask.Priority ||
-		newTask.Retries != currentTask.Retries ||
-		newTask.Timeout != currentTask.Timeout
-}
-
-func stringSlicesEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }

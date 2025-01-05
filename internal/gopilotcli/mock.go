@@ -26,19 +26,16 @@ func NewMockGopilot() *MockGopilot {
 	}
 }
 
-func (m *MockGopilot) SetResponse(taskPath string, response TaskResponse) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.responses[taskPath] = response
+func (m *MockGopilot) SetResponse(path string, response TaskResponse) {
+	m.responses[path] = response
 }
 
 func (m *MockGopilot) GenerateTaskProps(taskPath string) (string, []string, string, int, string, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	if response, ok := m.responses[taskPath]; ok {
-		return response.Command, response.Dependencies, response.Priority, response.Retries, response.Timeout, response.Error
+		if response.Error != nil {
+			return "", nil, "", 0, "", response.Error
+		}
+		return response.Command, response.Dependencies, response.Priority, response.Retries, response.Timeout, nil
 	}
-
-	return "", nil, "medium", 1, "30m", nil
+	return "", nil, "", 0, "", nil
 }

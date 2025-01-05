@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/company/task-graph-fs/internal/state"
@@ -27,6 +29,8 @@ func loadState(path string) (*state.StateFile, error) {
 
 // createTestWorkflow creates a test workflow with the given tasks
 func createTestWorkflow(rootDir, workflowName string, tasks []string) error {
+	// Sanitize workflow name to match init behavior
+	workflowName = sanitizeWorkflowName(workflowName)
 	workflowDir := filepath.Join(rootDir, workflowName)
 	if err := os.MkdirAll(workflowDir, 0o755); err != nil {
 		return err
@@ -63,29 +67,26 @@ medium
 	return nil
 }
 
-// createDependencyLink creates a symbolic link to represent task dependencies
-func createDependencyLink(rootDir, workflowName, sourceTask, targetTask string) error {
+func createDependencyLink(rootDir, workflowName, taskID, dependencyID string) error {
 	workflowDir := filepath.Join(rootDir, workflowName)
 	return os.Symlink(
-		filepath.Join(workflowDir, targetTask+".md"),
-		filepath.Join(workflowDir, sourceTask+"_dependencies"),
+		filepath.Join(workflowDir, dependencyID+".md"),
+		filepath.Join(workflowDir, taskID+"_dependencies"),
 	)
 }
 
-// verifyWorkflowState checks if the workflow state matches expected values
-func verifyWorkflowState(t *testing.T, state *state.StateFile, workflowID string, expectedStatus string) {
-	t.Helper()
-
+// verifyWorkflowState checks if a workflow has the expected status
+func verifyWorkflowState(t *testing.T, stateFile *state.StateFile, workflowID, expectedStatus string) {
 	var workflow *state.WorkflowState
-	for i := range state.Workflows {
-		if state.Workflows[i].WorkflowID == workflowID {
-			workflow = &state.Workflows[i]
+	for i := range stateFile.Workflows {
+		if stateFile.Workflows[i].WorkflowID == workflowID {
+			workflow = &stateFile.Workflows[i]
 			break
 		}
 	}
 
 	if workflow == nil {
-		t.Errorf("workflow %s not found in state", workflowID)
+		t.Errorf("workflow %s not found", workflowID)
 		return
 	}
 
@@ -94,12 +95,10 @@ func verifyWorkflowState(t *testing.T, state *state.StateFile, workflowID string
 	}
 }
 
-// verifyTaskState checks if a task's state matches expected values
-func verifyTaskState(t *testing.T, state *state.StateFile, workflowID, taskID, expectedStatus string) {
-	t.Helper()
-
+// verifyTaskState checks if a task has the expected status
+func verifyTaskState(t *testing.T, stateFile *state.StateFile, workflowID, taskID, expectedStatus string) {
 	var task *state.TaskState
-	for _, w := range state.Workflows {
+	for _, w := range stateFile.Workflows {
 		if w.WorkflowID == workflowID {
 			for i := range w.Tasks {
 				if w.Tasks[i].ID == taskID {
@@ -118,4 +117,12 @@ func verifyTaskState(t *testing.T, state *state.StateFile, workflowID, taskID, e
 	if task.Status != expectedStatus {
 		t.Errorf("expected task status %s, got %s", expectedStatus, task.Status)
 	}
+}
+
+// sanitizeWorkflowName sanitizes the workflow name
+func sanitizeWorkflowName(name string) string {
+	name = strings.ToLower(name)
+	name = strings.ReplaceAll(name, " ", "-")
+	reg := regexp.MustCompile("[^a-z0-9-]+")
+	return reg.ReplaceAllString(name, "")
 }

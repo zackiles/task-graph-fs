@@ -80,3 +80,9 @@ func (p *Parser) parseWorkflow(workflowPath string) (Workflow, error) {
 
 	return workflow, nil
 }
+
+func ParseWorkflows(basePath string) ([]Workflow, error) {
+	// Create a default parser with a real gopilot client
+	parser := NewParser(gopilotcli.NewRealGopilot())
+	return parser.ParseWorkflows(basePath)
+}

@@ -31,8 +31,9 @@ Because running mkdir, touch, and then piping a few sentences into a file to cre
 
 2. **Initialize a Workflow:**
    ```bash
-   tgfs init --workflow-name my-workflow --task-name first-task
+   tgfs init
    ```
+   You'll be prompted to enter a workflow name. The name will be automatically formatted to be lowercase, hyphen-separated, and alphanumeric.
 
 3. **Run Your Workflow:**
    ```bash
