@@ -5,6 +5,9 @@ import (
 	"os/exec"
 )
 
+// NOTE: This is not a real Gopilot integration
+// Gopilot is still being developed and can be found here https://github.com/zackiles/gopilot
+// For now, we're just mocking the expected interface and behavior
 type RealGopilot struct{}
 
 func NewRealGopilot() *RealGopilot {

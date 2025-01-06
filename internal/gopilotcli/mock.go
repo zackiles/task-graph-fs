@@ -2,6 +2,9 @@ package gopilotcli
 
 import "sync"
 
+// NOTE: This is not a real Gopilot integration
+// Gopilot is still being developed and can be found here https://github.com/zackiles/gopilot
+// For now, we're just mocking the expected interface and behavior
 type GopilotCLI interface {
 	GenerateTaskProps(taskPath string) (command string, dependencies []string, priority string, retries int, timeout string, err error)
 }
