@@ -1,4 +1,4 @@
-package commands
+package cmd
 
 import (
 	"bufio"
@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Constants for task template.
 const taskTemplate = `# Example Task
 
 ## Command
@@ -28,22 +29,22 @@ medium
 ## Timeout
 30m`
 
-func sanitizeWorkflowName(name string) string {
-	name = strings.ToLower(name)
-	name = strings.ReplaceAll(name, " ", "-")
-	reg := regexp.MustCompile("[^a-z0-9-]+")
-	return reg.ReplaceAllString(name, "")
-}
-
-func NewInitCommand() *cobra.Command {
+// NewInitCmd creates and returns the "init" command.
+func NewInitCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
 		Short: "Initialize a new workflow",
-		RunE:  runInit,
+		Long: `The "init" command allows you to create a new workflow directory
+with a sanitized name and an example task file.`,
+		Args: cobra.NoArgs, // No positional arguments are expected
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runInit()
+		},
 	}
 }
 
-func runInit(cmd *cobra.Command, args []string) error {
+// runInit contains the logic for the "init" command.
+func runInit() error {
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Print("Enter workflow name: ")
@@ -60,6 +61,15 @@ func runInit(cmd *cobra.Command, args []string) error {
 	return createWorkflow(workflowName)
 }
 
+// sanitizeWorkflowName ensures the workflow name is valid and URL-safe.
+func sanitizeWorkflowName(name string) string {
+	name = strings.ToLower(name)
+	name = strings.ReplaceAll(name, " ", "-")
+	reg := regexp.MustCompile("[^a-z0-9-]+")
+	return reg.ReplaceAllString(name, "")
+}
+
+// createWorkflow sets up a workflow directory with a template task file.
 func createWorkflow(name string) error {
 	if err := os.MkdirAll(name, 0o755); err != nil {
 		return fmt.Errorf("failed to create workflow directory: %w", err)

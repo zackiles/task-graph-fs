@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zackiles/task-graph-fs/internal/commands"
-	"github.com/zackiles/task-graph-fs/internal/gopilotcli"
+	"github.com/zackiles/task-graph-fs/cmd"
 	"github.com/zackiles/task-graph-fs/internal/state"
+	"github.com/zackiles/task-graph-fs/vendor/gopilotcli"
 )
 
 type testEnv struct {
@@ -537,7 +537,7 @@ func TestNestedWorkflows(t *testing.T) {
 
 // Helper function to execute CLI commands in tests
 func executeCommand(args ...string) error {
-	cmd := commands.NewRootCommand()
-	cmd.SetArgs(args)
-	return cmd.Execute()
+	rootCmd := cmd.NewRootCommand()
+	rootCmd.SetArgs(args)
+	return rootCmd.Execute()
 }
