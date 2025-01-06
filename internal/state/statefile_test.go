@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/company/task-graph-fs/internal/fsparse"
+	"github.com/zackiles/task-graph-fs/internal/fsparse"
 )
 
 const StateFileName = "tgfs-state.json"

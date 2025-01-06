@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/company/task-graph-fs/internal/apply"
-	"github.com/company/task-graph-fs/internal/fsparse"
-	"github.com/company/task-graph-fs/internal/state"
 	"github.com/spf13/cobra"
+	"github.com/zackiles/task-graph-fs/internal/fsparse"
+	"github.com/zackiles/task-graph-fs/internal/orchestrator"
+	"github.com/zackiles/task-graph-fs/internal/state"
 )
 
 func newApplyCmd(parser *fsparse.Parser) *cobra.Command {
@@ -87,7 +87,7 @@ func newApplyCmd(parser *fsparse.Parser) *cobra.Command {
 				}
 
 				// Execute workflow
-				orchestrator := apply.NewOrchestrator(workflow, &workflowState)
+				orchestrator := orchestrator.NewOrchestrator(workflow, &workflowState)
 				if err := orchestrator.Execute(ctx); err != nil {
 					workflowState.Status = "failed"
 					fmt.Printf("Workflow %s failed: %v\n", workflow.Name, err)

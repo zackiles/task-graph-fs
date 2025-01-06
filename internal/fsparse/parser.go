@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/company/task-graph-fs/internal/gopilotcli"
+	"github.com/zackiles/task-graph-fs/internal/gopilotcli"
 )
 
 type Parser struct {

@@ -1,9 +1,9 @@
 package commands
 
 import (
-	"github.com/company/task-graph-fs/internal/fsparse"
-	"github.com/company/task-graph-fs/internal/gopilotcli"
 	"github.com/spf13/cobra"
+	"github.com/zackiles/task-graph-fs/internal/fsparse"
+	"github.com/zackiles/task-graph-fs/internal/gopilotcli"
 )
 
 func NewRootCommand() *cobra.Command {

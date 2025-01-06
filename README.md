@@ -45,7 +45,35 @@ Because running mkdir, touch, and then piping a few sentences into a file to cre
 
 ### Initialize a New Workflow
 ```bash
-tgfs init --workflow-name <workflow-name> --task-name <task-name>
+tgfs init
+```
+Interactively prompts for a workflow name. The name will be automatically sanitized to be lowercase, hyphen-separated, and alphanumeric.
+
+### Plan Changes
+Preview the changes that will be made to your workflow.
+
+```bash
+tgfs plan [--dir <directory>]
+```
+By default, `plan` runs in the current directory if `--dir` is not specified.
+
+### Apply Changes
+Apply and execute the planned changes.
+
+```bash
+tgfs apply [--auto-approve]
+```
+Without `--auto-approve`, you'll be prompted to confirm the changes before execution.
+
+### Command Output Examples
+
+The plan and apply output examples in the README are accurate to the actual implementation in the code, but I would add a note about the interactive confirmation for apply:
+
+```bash
+$ tgfs apply
+
+# Without --auto-approve, you'll see:
+Do you want to apply these changes? [y/N]
 ```
 
 ### 1. Plan()

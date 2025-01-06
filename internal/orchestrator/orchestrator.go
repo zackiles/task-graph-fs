@@ -1,4 +1,4 @@
-package apply
+package orchestrator
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/company/task-graph-fs/internal/fsparse"
-	"github.com/company/task-graph-fs/internal/state"
+	"github.com/zackiles/task-graph-fs/internal/fsparse"
+	"github.com/zackiles/task-graph-fs/internal/state"
 )
 
 type Orchestrator struct {

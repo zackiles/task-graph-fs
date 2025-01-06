@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/company/task-graph-fs/internal/fsparse"
-	"github.com/company/task-graph-fs/internal/state"
+	"github.com/zackiles/task-graph-fs/internal/fsparse"
+	"github.com/zackiles/task-graph-fs/internal/state"
 )
 
 func printWorkflowAddition(w fsparse.Workflow) {

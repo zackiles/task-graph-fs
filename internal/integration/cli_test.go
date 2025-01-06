@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/company/task-graph-fs/internal/commands"
-	"github.com/company/task-graph-fs/internal/gopilotcli"
-	"github.com/company/task-graph-fs/internal/state"
+	"github.com/zackiles/task-graph-fs/internal/commands"
+	"github.com/zackiles/task-graph-fs/internal/gopilotcli"
+	"github.com/zackiles/task-graph-fs/internal/state"
 )
 
 type testEnv struct {
@@ -60,8 +60,8 @@ func TestEndToEnd(t *testing.T) {
 		}
 
 		// Verify directory and file creation
-		// Note: The workflow name should be sanitized to "my-workflow-123"
-		taskPath := filepath.Join(env.rootDir, "my-workflow-123", "task.example.md")
+		// Note: The workflow name should be sanitized to "mock-workflow1"
+		taskPath := filepath.Join(env.rootDir, "mock-workflow1", "mock-task.md")
 		if _, err := os.Stat(taskPath); os.IsNotExist(err) {
 			t.Error("example task file was not created")
 		}

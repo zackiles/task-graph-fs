@@ -1,4 +1,4 @@
-module github.com/company/task-graph-fs
+module github.com/zackiles/task-graph-fs
 
 go 1.23.2
 
@@ -9,4 +9,4 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 )
 
-replace github.com/company/task-graph-fs => ./
+replace github.com/zackiles/task-graph-fs => ./

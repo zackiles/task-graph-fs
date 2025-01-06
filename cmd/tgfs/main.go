@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/company/task-graph-fs/internal/commands"
+	"github.com/zackiles/task-graph-fs/internal/commands"
 )
 
 func main() {

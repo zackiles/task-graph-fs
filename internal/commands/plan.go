@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 
-	"github.com/company/task-graph-fs/internal/fsparse"
-	"github.com/company/task-graph-fs/internal/state"
 	"github.com/spf13/cobra"
+	"github.com/zackiles/task-graph-fs/internal/fsparse"
+	"github.com/zackiles/task-graph-fs/internal/state"
 )
 
 func newPlanCmd(parser *fsparse.Parser) *cobra.Command {
