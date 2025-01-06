@@ -17,11 +17,27 @@ TaskGraphFS is a filesystem-based task orchestration tool that allows users to d
    - Task timeout management
    - State recovery after interruption
    - Clean termination via context cancellation
+   - Concurrent task execution with sync.WaitGroup
+   - Task status tracking with sync.Map
+   - Context-aware execution with cancellation
+   - Task-specific timeout contexts
+   - Error propagation through channels
+   - Graceful shutdown on interrupts
 
 3. **AI Integration**
-   - Uses GopilotCLI interface for task parsing
+   - Uses provider pattern for GopilotCLI interface:
+     ```go
+     // Provider singleton pattern
+     var provider GopilotCLI = NewRealGopilot()
+
+     // Support for mock injection in tests
+     func SetProvider(p GopilotCLI)
+     func GetProvider() GopilotCLI
+     func Reset()
+     ```
    - Supports both structured and natural language task definitions
-   - Mockable for testing
+   - Context-aware operations for cancellation support
+   - Mockable for testing with path normalization
 
 ## Task Definition
 Tasks are defined in markdown files with the following structure:
@@ -44,8 +60,28 @@ high
 30m
 ```
 
+The Task object includes:
+```go
+type Task struct {
+    ID           string   // Task identifier (filename without .md)
+    MarkdownPath string   // Full path to markdown file
+    Command      string   // Command to execute
+    Dependencies []string // List of dependent task IDs
+    Priority     string   // Task priority level
+    Retries      int     // Number of retry attempts
+    Timeout      string  // Task timeout duration
+    Status       string  // Current execution status
+    Output       string  // Task execution output
+    Duration     string  // Task execution duration
+}
+```
+
 ## State Management
-The state file (`tgfs-state.json`) tracks workflow and task status:
+The state file (`tgfs-state.json`) tracks workflow and task status with context-aware operations:
+- Context-aware save operations
+- Atomic file writes
+- Proper error handling with context cancellation
+- State diffing with context support
 ```json
 {
   "workflow_id": "MyWorkflow",
@@ -82,9 +118,11 @@ The state file (`tgfs-state.json`) tracks workflow and task status:
    - State preservation between attempts
 
 2. **Timeout Management**
+   - Global apply timeout (30s default, 5s in test environment)
    - Per-task timeout configuration
-   - Default 30-minute timeout
+   - Default 30-minute task timeout
    - Clean termination of timed-out processes
+   - Context-aware cancellation
 
 3. **State Recovery**
    - Persistent state file
@@ -131,43 +169,19 @@ project/
 1. `tgfs init`
    - Creates new workflow directory with example task
    - Args: None (interactive workflow name prompt)
-   - Returns: Creates directory structure
+   - Returns: Creates directory structure with sanitized workflow name
 
 2. `tgfs plan [--dir <path>]`
    - Shows planned workflow changes
-   - Args: Optional workflow directory path
-   - Returns: Detailed plan output:
+   - Args: 
+     - `--dir, -d`: Directory containing workflows (default: ".")
+   - Returns: Detailed plan output and creates `.tgfs-plan` file
 
-Example output of `tgfs plan`:
-```
-TaskGraphFS Plan:
-
-Workflow actions are indicated with the following symbols:
-  + add (new workflow/task)
-  ~ update (modified workflow/task)
-  - remove (deleted workflow/task)
-
-The following statefile changes will be made:
-
-  + "workflows[0]" {
-      "workflow_id": "NewWorkflow",
-      "status": "pending",
-      "tasks": [
-        {
-          "id": "TaskX",
-          "command": "python task_x.py",
-          "dependencies": [],
-          "priority": "medium",
-          "retries": 2,
-          "status": "pending"
-        }
-      ]
-    }
-```
-
-1. `tgfs apply [--auto-approve]`
+3. `tgfs apply [--dir <path>] [--auto-approve]`
    - Executes planned workflow changes
-   - Args: Optional auto-approve flag
+   - Args:
+     - `--dir, -d`: Directory containing workflows (default: ".")
+     - `--auto-approve`: Skip interactive approval prompt
    - Returns: Execution results and updates state file
 
 ## Important Internal Methods
@@ -198,7 +212,7 @@ make test-integration  # Run integration tests
 make test-unit         # Run unit tests
 make test-coverage     # Run unit tests with coverage
 make test-race         # Run unit tests with race detection
-make test-short        # Run unit tests without race detection
+make test-short        # Run u
 make test-verbose      # Run unit tests with verbose output
 make test-watch        # Run unit tests and watch for changes
 ```
@@ -236,9 +250,27 @@ mockGopilot.SetResponse(
 )
 ```
 
+### Testing Utilities
+1. `internal/testutils/helper.go`
+   - Provides test running utilities with proper naming and logging
+   - Captures caller information for better test output
+
+2. `internal/integration/helpers.go`
+   - Test workflow creation helpers
+   - State verification utilities
+   - Dependency link creation
+   - Workflow name sanitization
+
 ## TODOs
 
 1. Actually implement real task parsing on `tgfs plan` which utilizes a real gopilot client to parse the tasks and return a structure task object representing what was defined in the unstructured markdown files written by a human.
 2. Actually implement and test task running in `tgfs apply` so that we can trigger the tasks defined in the structured task objects returned by gopilot inthe `tgfs plan` command.
 3. Add workflow versioning and rollback support
 4. Decide on if a metafile or the statefile should be written to the root of the workspace.
+
+### Print Utilities
+Located in `internal/printutils`:
+- Task change detection and formatting
+- Workflow state diff visualization
+- Dependency formatting
+- Plan output formatting in Terraform-like style

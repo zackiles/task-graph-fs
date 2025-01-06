@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,13 +39,20 @@ func NewInitCmd() *cobra.Command {
 with a sanitized name and an example task file.`,
 		Args: cobra.NoArgs, // No positional arguments are expected
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runInit()
+			ctx := cmd.Context()
+			return runInit(ctx)
 		},
 	}
 }
 
 // runInit contains the logic for the "init" command.
-func runInit() error {
+func runInit(ctx context.Context) error {
+	// Get current working directory
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Print("Enter workflow name: ")
@@ -58,7 +66,7 @@ func runInit() error {
 		return fmt.Errorf("workflow name cannot be empty")
 	}
 
-	return createWorkflow(workflowName)
+	return createWorkflow(ctx, wd, workflowName)
 }
 
 // sanitizeWorkflowName ensures the workflow name is valid and URL-safe.
@@ -70,12 +78,15 @@ func sanitizeWorkflowName(name string) string {
 }
 
 // createWorkflow sets up a workflow directory with a template task file.
-func createWorkflow(name string) error {
-	if err := os.MkdirAll(name, 0o755); err != nil {
+func createWorkflow(ctx context.Context, baseDir, name string) error {
+	// Create full path for the workflow directory
+	workflowDir := filepath.Join(baseDir, name)
+
+	if err := os.MkdirAll(workflowDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create workflow directory: %w", err)
 	}
 
-	taskPath := filepath.Join(name, "task.example.md")
+	taskPath := filepath.Join(workflowDir, "task.example.md")
 	if err := os.WriteFile(taskPath, []byte(taskTemplate), 0o644); err != nil {
 		return fmt.Errorf("failed to create task file: %w", err)
 	}

@@ -1,4 +1,4 @@
-.PHONY: build test clean install run
+.PHONY: build test clean install run test-integration
 
 # Binary name
 BINARY_NAME=tgfs
@@ -30,6 +30,11 @@ install:
 test:
 	@echo "Running tests..."
 	@go test -v ./...
+
+# Run integration tests
+test-integration:
+	@echo "Running integration tests..."
+	@go test -v ./internal/integration
 
 # Clean build artifacts
 clean:

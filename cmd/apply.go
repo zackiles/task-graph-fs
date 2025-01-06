@@ -26,8 +26,9 @@ func NewApplyCmd(parser *fsparse.Parser) *cobra.Command {
 It ensures that only approved changes are applied and supports interactive or
 automatic approval modes.`,
 		Args: cobra.NoArgs, // No positional arguments are expected
-		RunE: func(applyCmd *cobra.Command, args []string) error {
-			return runApply(parser, opts.workflowDir, opts.autoApprove)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			return runApply(ctx, parser, opts.workflowDir, opts.autoApprove)
 		},
 	}
 
@@ -38,11 +39,11 @@ automatic approval modes.`,
 }
 
 // runApply contains the core logic for the "apply" command.
-func runApply(parser *fsparse.Parser, workflowDir string, autoApprove bool) error {
+func runApply(ctx context.Context, parser *fsparse.Parser, workflowDir string, autoApprove bool) error {
 	applyService := services.NewApplyService(parser)
 
 	// Check for changes first
-	result, err := applyService.Plan(services.ApplyOptions{
+	result, err := applyService.Plan(ctx, services.ApplyOptions{
 		WorkflowDir: workflowDir,
 		AutoApprove: autoApprove,
 	})
@@ -64,7 +65,7 @@ func runApply(parser *fsparse.Parser, workflowDir string, autoApprove bool) erro
 	}
 
 	// Set up cancellation context
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	handleInterrupts(cancel)

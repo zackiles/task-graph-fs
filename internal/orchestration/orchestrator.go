@@ -12,188 +12,104 @@ import (
 )
 
 type Orchestrator struct {
-	workflow    fsparse.Workflow
-	state       *state.WorkflowState
-	inProgress  sync.Map
-	maxWorkers  int
-	baseRetryMs int
+	workflow   *fsparse.Workflow
+	state      *state.WorkflowState
+	inProgress sync.Map
 }
 
 func NewOrchestrator(workflow fsparse.Workflow, state *state.WorkflowState) *Orchestrator {
 	return &Orchestrator{
-		workflow:    workflow,
-		state:       state,
-		maxWorkers:  4,
-		baseRetryMs: 1000,
+		workflow: &workflow,
+		state:    state,
 	}
 }
 
 func (o *Orchestrator) Execute(ctx context.Context) error {
-	// Create dependency graph
-	graph := buildDependencyGraph(o.workflow)
+	// Create a new context with cancellation for task management
+	taskCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	// Create worker pool
-	tasks := make(chan *fsparse.Task, len(o.workflow.Tasks))
+	// Create error channel for collecting task errors
+	errChan := make(chan error, len(o.workflow.Tasks))
 	var wg sync.WaitGroup
 
-	// Start workers
-	for i := 0; i < o.maxWorkers; i++ {
-		wg.Add(1)
-		go o.worker(ctx, tasks, &wg)
-	}
+	// Start task execution
+	for i, task := range o.workflow.Tasks {
+		select {
+		case <-taskCtx.Done():
+			return taskCtx.Err()
+		default:
+			wg.Add(1)
+			o.inProgress.Store(task.ID, struct{}{})
+			go func(taskIndex int, t fsparse.Task) {
+				defer wg.Done()
+				defer o.inProgress.Delete(t.ID)
 
-	// Schedule tasks that have no dependencies
-	readyTasks := graph.getTasksWithNoDeps()
-	for _, task := range readyTasks {
-		tasks <- task
-	}
-
-	// Monitor task completion and schedule new tasks
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				o.inProgress.Range(func(key, value interface{}) bool {
-					taskID := key.(string)
-					status := value.(string)
-					if status == "completed" {
-						// Get and schedule tasks that were waiting on this one
-						nextTasks := graph.getUnblockedTasks(taskID)
-						for _, task := range nextTasks {
-							tasks <- task
-						}
-						o.inProgress.Delete(taskID)
-					}
-					return true
-				})
-				time.Sleep(100 * time.Millisecond)
-			}
+				if err := o.executeTask(taskCtx, t); err != nil {
+					errChan <- fmt.Errorf("task %s failed: %w", t.ID, err)
+					cancel() // Now cancel() is defined
+				}
+			}(i, task)
 		}
+	}
+
+	// Wait for all tasks to complete or context to be cancelled
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
 	}()
 
-	wg.Wait()
-	close(tasks)
-	return nil
-}
-
-func (o *Orchestrator) worker(ctx context.Context, tasks <-chan *fsparse.Task, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	for task := range tasks {
-		o.inProgress.Store(task.ID, "running")
-
-		err := o.executeWithRetries(ctx, task)
-		if err != nil {
-			o.updateTaskState(task, "failed", err.Error())
-			continue
-		}
-
-		o.updateTaskState(task, "completed", "")
-		o.inProgress.Store(task.ID, "completed")
+	select {
+	case <-taskCtx.Done():
+		return taskCtx.Err()
+	case err := <-errChan:
+		return err
+	case <-done:
+		return nil
 	}
 }
 
-func (o *Orchestrator) executeWithRetries(ctx context.Context, task *fsparse.Task) error {
-	var lastErr error
-	for attempt := 0; attempt <= task.Retries; attempt++ {
-		if attempt > 0 {
-			// Exponential backoff
-			backoff := time.Duration(o.baseRetryMs*(1<<attempt)) * time.Millisecond
-			time.Sleep(backoff)
-		}
-
-		// Parse timeout from task
-		timeout, err := time.ParseDuration(task.Timeout)
-		if err != nil {
-			timeout = 30 * time.Minute // default timeout
-		}
-
-		// Create context with timeout
-		execCtx, cancel := context.WithTimeout(ctx, timeout)
-		defer cancel()
-
-		// Execute command
-		cmd := exec.CommandContext(execCtx, "sh", "-c", task.Command)
-		output, err := cmd.CombinedOutput()
-
-		if err == nil {
-			o.updateTaskState(task, "running", string(output))
-			return nil
-		}
-
-		lastErr = fmt.Errorf("attempt %d failed: %w\noutput: %s", attempt+1, err, string(output))
-		o.updateTaskState(task, "retrying", lastErr.Error())
-	}
-
-	return lastErr
-}
-
-func (o *Orchestrator) updateTaskState(task *fsparse.Task, status, output string) {
-	for i, t := range o.state.Tasks {
-		if t.ID == task.ID {
-			o.state.Tasks[i].Status = status
-			o.state.Tasks[i].Output = output
-			return
-		}
-	}
-}
-
-type dependencyGraph struct {
-	nodes map[string]*graphNode
-}
-
-type graphNode struct {
-	task         *fsparse.Task
-	dependencies map[string]bool
-	dependents   map[string]bool
-}
-
-func buildDependencyGraph(workflow fsparse.Workflow) *dependencyGraph {
-	graph := &dependencyGraph{
-		nodes: make(map[string]*graphNode),
-	}
-
-	// Create nodes
-	for _, task := range workflow.Tasks {
-		task := task // Create new variable for closure
-		graph.nodes[task.ID] = &graphNode{
-			task:         &task,
-			dependencies: make(map[string]bool),
-			dependents:   make(map[string]bool),
+func (o *Orchestrator) executeTask(ctx context.Context, task fsparse.Task) error {
+	// Update task status
+	for i := range o.state.Tasks {
+		if o.state.Tasks[i].ID == task.ID {
+			o.state.Tasks[i].Status = "running"
+			break
 		}
 	}
 
-	// Add dependencies
-	for taskID, deps := range workflow.Dependencies {
-		for _, dep := range deps {
-			graph.nodes[taskID].dependencies[dep] = true
-			graph.nodes[dep].dependents[taskID] = true
+	// Parse the timeout duration from the task
+	timeout, err := time.ParseDuration(task.Timeout)
+	if err != nil {
+		timeout = 30 * time.Second // fallback to default timeout
+	}
+
+	// Create command with task-specific timeout context
+	taskCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(taskCtx, "sh", "-c", task.Command)
+
+	// Run command
+	err = cmd.Run()
+
+	// Update task status based on result
+	for i := range o.state.Tasks {
+		if o.state.Tasks[i].ID == task.ID {
+			if err != nil {
+				if taskCtx.Err() == context.DeadlineExceeded {
+					o.state.Tasks[i].Status = "timeout"
+					err = fmt.Errorf("task %s timed out after %s: %w", task.ID, timeout, err)
+				} else {
+					o.state.Tasks[i].Status = "failed"
+				}
+			} else {
+				o.state.Tasks[i].Status = "completed"
+			}
+			break
 		}
 	}
 
-	return graph
-}
-
-func (g *dependencyGraph) getTasksWithNoDeps() []*fsparse.Task {
-	var tasks []*fsparse.Task
-	for _, node := range g.nodes {
-		if len(node.dependencies) == 0 {
-			tasks = append(tasks, node.task)
-		}
-	}
-	return tasks
-}
-
-func (g *dependencyGraph) getUnblockedTasks(completedTaskID string) []*fsparse.Task {
-	var tasks []*fsparse.Task
-	for depTaskID := range g.nodes[completedTaskID].dependents {
-		node := g.nodes[depTaskID]
-		delete(node.dependencies, completedTaskID)
-		if len(node.dependencies) == 0 {
-			tasks = append(tasks, node.task)
-		}
-	}
-	return tasks
+	return err
 }

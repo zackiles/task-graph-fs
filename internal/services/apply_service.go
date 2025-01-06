@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/zackiles/task-graph-fs/internal/fsparse"
 	"github.com/zackiles/task-graph-fs/internal/orchestration"
@@ -31,18 +33,22 @@ type ApplyResult struct {
 	HasChanges bool
 }
 
-func (s *ApplyService) Plan(opts ApplyOptions) (*ApplyResult, error) {
-	workflows, err := s.parser.ParseWorkflows(opts.WorkflowDir)
+func (s *ApplyService) Plan(ctx context.Context, opts ApplyOptions) (*ApplyResult, error) {
+	workflows, err := s.parser.ParseWorkflows(ctx, opts.WorkflowDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse workflows: %w", err)
 	}
 
-	currentState, err := state.LoadState()
+	currentState, err := state.LoadState(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load state: %w", err)
 	}
 
-	added, updated, removed := currentState.ComputeDiff(workflows)
+	added, updated, removed, err := currentState.ComputeDiff(ctx, workflows)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute diff: %w", err)
+	}
+
 	return &ApplyResult{
 		Added:      added,
 		Updated:    updated,
@@ -52,7 +58,17 @@ func (s *ApplyService) Plan(opts ApplyOptions) (*ApplyResult, error) {
 }
 
 func (s *ApplyService) Apply(ctx context.Context, opts ApplyOptions) error {
-	workflows, err := s.parser.ParseWorkflows(opts.WorkflowDir)
+	// Create a new context with timeout for the entire apply operation
+	// Use a shorter timeout for tests
+	timeout := 30 * time.Second
+	if os.Getenv("TEST_ENV") == "true" {
+		timeout = 5 * time.Second
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	workflows, err := s.parser.ParseWorkflows(ctx, opts.WorkflowDir)
 	if err != nil {
 		return fmt.Errorf("failed to parse workflows: %w", err)
 	}
@@ -60,6 +76,13 @@ func (s *ApplyService) Apply(ctx context.Context, opts ApplyOptions) error {
 	newState := &state.StateFile{}
 
 	for _, workflow := range workflows {
+		// Check context before starting each workflow
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		workflowState := state.WorkflowState{
 			WorkflowID: workflow.Name,
 			Status:     "running",
@@ -79,15 +102,22 @@ func (s *ApplyService) Apply(ctx context.Context, opts ApplyOptions) error {
 
 		orchestrator := orchestration.NewOrchestrator(workflow, &workflowState)
 		if err := orchestrator.Execute(ctx); err != nil {
-			workflowState.Status = "failed"
+			if err == context.Canceled {
+				workflowState.Status = "cancelled"
+			} else {
+				workflowState.Status = "failed"
+			}
+			// Save partial state before returning
+			_ = newState.Save(ctx)
 			return fmt.Errorf("workflow %s failed: %w", workflow.Name, err)
 		}
-		workflowState.Status = "completed"
 
+		workflowState.Status = "completed"
 		newState.Workflows = append(newState.Workflows, workflowState)
 	}
 
-	if err := newState.Save(); err != nil {
+	// Final state save
+	if err := newState.Save(ctx); err != nil {
 		return fmt.Errorf("failed to save state: %w", err)
 	}
 

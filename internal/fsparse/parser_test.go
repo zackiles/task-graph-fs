@@ -1,6 +1,7 @@
 package fsparse
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -56,8 +57,11 @@ medium
 		t.Fatal(err)
 	}
 
-	// Parse workflows
-	workflows, err := ParseWorkflows(testDir)
+	// Create parser instance
+	parser := NewParser()
+
+	// Parse workflows using parser instance
+	workflows, err := parser.ParseWorkflows(context.Background(), testDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,8 +116,11 @@ high
 		t.Fatal(err)
 	}
 
-	// Parse workflows
-	workflows, err := ParseWorkflows(testDir)
+	// Create parser instance
+	parser := NewParser()
+
+	// Parse workflows using parser instance
+	workflows, err := parser.ParseWorkflows(context.Background(), testDir)
 	if err != nil {
 		t.Fatal(err)
 	}

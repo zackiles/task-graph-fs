@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -29,65 +30,80 @@ type TaskState struct {
 }
 
 // LoadState loads the state from the state file
-func LoadState() (*StateFile, error) {
-	data, err := os.ReadFile("tgfs-state.json")
-	if err != nil {
-		if os.IsNotExist(err) {
-			return &StateFile{}, nil
+func LoadState(ctx context.Context) (*StateFile, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+		data, err := os.ReadFile("tgfs-state.json")
+		if err != nil {
+			if os.IsNotExist(err) {
+				return &StateFile{}, nil
+			}
+			return nil, fmt.Errorf("failed to read state file: %w", err)
 		}
-		return nil, fmt.Errorf("failed to read state file: %w", err)
-	}
 
-	var state StateFile
-	if err := json.Unmarshal(data, &state); err != nil {
-		return nil, fmt.Errorf("failed to parse state file: %w", err)
-	}
+		var state StateFile
+		if err := json.Unmarshal(data, &state); err != nil {
+			return nil, fmt.Errorf("failed to parse state file: %w", err)
+		}
 
-	return &state, nil
+		return &state, nil
+	}
 }
 
 // Save writes the state to the state file
-func (s *StateFile) Save() error {
-	data, err := json.MarshalIndent(s, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal state: %w", err)
-	}
+func (s *StateFile) Save(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		data, err := json.MarshalIndent(s, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal state: %w", err)
+		}
 
-	if err := os.WriteFile("tgfs-state.json", data, 0o644); err != nil {
-		return fmt.Errorf("failed to write state file: %w", err)
-	}
+		if err := os.WriteFile("tgfs-state.json", data, 0o644); err != nil {
+			return fmt.Errorf("failed to write state file: %w", err)
+		}
 
-	return nil
+		return nil
+	}
 }
 
 // ComputeDiff compares the current state with the new workflows and returns
 // lists of workflows that need to be added, updated, or removed
-func (s *StateFile) ComputeDiff(workflows []fsparse.Workflow) (added, updated, removed []string) {
-	// Create maps for quick lookups
-	currentWorkflows := make(map[string]bool)
-	newWorkflows := make(map[string]bool)
+func (s *StateFile) ComputeDiff(ctx context.Context, workflows []fsparse.Workflow) (added, updated, removed []string, err error) {
+	select {
+	case <-ctx.Done():
+		return nil, nil, nil, ctx.Err()
+	default:
+		// Create maps for quick lookups
+		currentWorkflows := make(map[string]bool)
+		newWorkflows := make(map[string]bool)
 
-	// Track current workflows
-	for _, w := range s.Workflows {
-		currentWorkflows[w.WorkflowID] = true
-	}
-
-	// Track new workflows and find additions/updates
-	for _, w := range workflows {
-		newWorkflows[w.Name] = true
-		if !currentWorkflows[w.Name] {
-			added = append(added, w.Name)
-		} else {
-			updated = append(updated, w.Name)
+		// Track current workflows
+		for _, w := range s.Workflows {
+			currentWorkflows[w.WorkflowID] = true
 		}
-	}
 
-	// Find removals
-	for _, w := range s.Workflows {
-		if !newWorkflows[w.WorkflowID] {
-			removed = append(removed, w.WorkflowID)
+		// Track new workflows and find additions/updates
+		for _, w := range workflows {
+			newWorkflows[w.Name] = true
+			if !currentWorkflows[w.Name] {
+				added = append(added, w.Name)
+			} else {
+				updated = append(updated, w.Name)
+			}
 		}
-	}
 
-	return added, updated, removed
+		// Find removals
+		for _, w := range s.Workflows {
+			if !newWorkflows[w.WorkflowID] {
+				removed = append(removed, w.WorkflowID)
+			}
+		}
+
+		return added, updated, removed, nil
+	}
 }
