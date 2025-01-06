@@ -17,13 +17,13 @@ all: clean build
 build:
 	@echo "Building $(BINARY_NAME)..."
 	@mkdir -p $(BUILD_DIR)
-	@go build $(BUILD_FLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/tgfs
+	@go build $(BUILD_FLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) .
 	@echo "Done! Binary is in $(BUILD_DIR)/$(BINARY_NAME)"
 
 # Install the application globally
 install:
 	@echo "Installing $(BINARY_NAME)..."
-	@go install $(BUILD_FLAGS) ./cmd/tgfs
+	@go install $(BUILD_FLAGS) .
 	@echo "Done! Binary installed to $(shell go env GOPATH)/bin/$(BINARY_NAME)"
 
 # Run tests
@@ -44,7 +44,7 @@ run: build
 dev:
 	@echo "Building dev version..."
 	@mkdir -p $(BUILD_DIR)
-	@go build -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/tgfs
+	@go build -o $(BUILD_DIR)/$(BINARY_NAME) .
 	@echo "Done! Binary is in $(BUILD_DIR)/$(BINARY_NAME)"
 
 # Watch for changes and rebuild (requires watchexec)

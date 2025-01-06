@@ -12,11 +12,11 @@ TaskGraphFS is a filesystem-based task orchestration tool that allows users to d
    - State is tracked in `tgfs-state.json`
 
 2. **Orchestration Engine**
-   - Concurrent task execution with worker pools
-   - Dependency graph resolution
-   - Retry mechanism with exponential backoff
+   - Dependency graph resolution via symlinks
+   - Task execution with state tracking
    - Task timeout management
    - State recovery after interruption
+   - Clean termination via context cancellation
 
 3. **AI Integration**
    - Uses GopilotCLI interface for task parsing
@@ -91,29 +91,38 @@ The state file (`tgfs-state.json`) tracks workflow and task status:
    - Recovery from interruption
    - Maintains task output history
 
-## Structure
+## Project File Structure
 Example workflow structure:
 ```
-workflows/
-├── data-pipeline/
-│   ├── fetch-data.md
-│   ├── clean-data.md
-│   ├── clean-data_dependencies -> fetch-data.md
-│   ├── transform-data.md
-│   ├── transform-data_dependencies -> clean-data.md
-│   └── nested/
-│       ├── aggregate-daily.md
-│       ├── aggregate-daily_dependencies -> ../transform-data.md
-│       ├── compute-metrics.md
-│       └── compute-metrics_dependencies -> aggregate-daily.md
-│
-└── model-training/
-    ├── prepare-features.md
-    ├── prepare-features_dependencies -> ../data-pipeline/transform-data.md
-    ├── train-model.md
-    ├── train-model_dependencies -> prepare-features.md
-    ├── evaluate-model.md
-    └── evaluate-model_dependencies -> train-model.md
+project/
+├── cmd/
+│   ├── apply.go
+│   ├── init.go
+│   ├── plan.go
+│   └── root.go
+├── internal/
+│   ├── fsparse/
+│   │   ├── parser.go
+│   │   ├── parser_test.go
+│   │   └── types.go
+│   ├── gopilotcli/
+│   │   ├── mock.go
+│   │   └── real.go
+│   ├── integration/
+│   │   ├── cli_test.go
+│   │   └── helpers.go
+│   ├── orchestrator/
+│   │   ├── orchestrator.go
+│   │   └── orchestrator_test.go
+│   ├── printutils/
+│   │   ├── tasks.go
+│   │   └── workflows.go
+│   └── state/
+│       ├── statefile.go
+│       └── statefile_test.go
+├── main.go
+├── go.mod
+└── go.sum
 ```
 
 ## Important Public Methods
@@ -128,6 +137,8 @@ workflows/
    - Shows planned workflow changes
    - Args: Optional workflow directory path
    - Returns: Detailed plan output:
+
+Example output of `tgfs plan`:
 ```
 TaskGraphFS Plan:
 
@@ -154,7 +165,7 @@ The following statefile changes will be made:
     }
 ```
 
-3. `tgfs apply [--auto-approve]`
+1. `tgfs apply [--auto-approve]`
    - Executes planned workflow changes
    - Args: Optional auto-approve flag
    - Returns: Execution results and updates state file
@@ -198,7 +209,7 @@ make test-watch        # Run unit tests and watch for changes
    - Tests dependency resolution
    - Tests nested workflows
 
-2. `internal/apply/orchestrator_test.go`
+2. `internal/orchestration/orchestrator_test.go`
    - Tests task execution
    - Tests failure handling
    - Tests dependency ordering

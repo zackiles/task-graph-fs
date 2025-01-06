@@ -1,6 +1,6 @@
 module github.com/zackiles/task-graph-fs
 
-go 1.23.2
+go 1.22
 
 require github.com/spf13/cobra v1.8.1
 

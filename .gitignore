@@ -45,5 +45,4 @@ debug.test
 .env
 .env.local
 
-# Dependency directories (remove if using go modules with vendor)
-vendor/
+/vendor

@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/zackiles/task-graph-fs/cmd"
+	"github.com/zackiles/task-graph-fs/internal/gopilotcli"
 	"github.com/zackiles/task-graph-fs/internal/state"
-	"github.com/zackiles/task-graph-fs/vendor/gopilotcli"
 )
 
 type testEnv struct {

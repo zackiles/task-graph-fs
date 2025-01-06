@@ -3,7 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/zackiles/task-graph-fs/internal/fsparse"
-	"github.com/zackiles/task-graph-fs/vendor/gopilotcli"
+	"github.com/zackiles/task-graph-fs/internal/gopilotcli"
 )
 
 var rootCmd = &cobra.Command{
@@ -19,7 +19,7 @@ func NewRootCommand() *cobra.Command {
 
 	rootCmd.AddCommand(
 		NewInitCmd(),
-		NewPlanCmd(parser)
+		NewPlanCmd(parser),
 		NewApplyCmd(parser),
 	)
 

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/company/task-graph-fs/internal/state"
+	"github.com/zackiles/task-graph-fs/internal/state"
 )
 
 // loadState reads and parses the state file

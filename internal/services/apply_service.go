@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/zackiles/task-graph-fs/internal/fsparse"
-	"github.com/zackiles/task-graph-fs/internal/orchestrator"
+	"github.com/zackiles/task-graph-fs/internal/orchestration"
 	"github.com/zackiles/task-graph-fs/internal/state"
 )
 
@@ -77,7 +77,7 @@ func (s *ApplyService) Apply(ctx context.Context, opts ApplyOptions) error {
 			}
 		}
 
-		orchestrator := orchestrator.NewOrchestrator(workflow, &workflowState)
+		orchestrator := orchestration.NewOrchestrator(workflow, &workflowState)
 		if err := orchestrator.Execute(ctx); err != nil {
 			workflowState.Status = "failed"
 			return fmt.Errorf("workflow %s failed: %w", workflow.Name, err)
