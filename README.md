@@ -25,9 +25,18 @@ Because running mkdir, touch, and then piping a few sentences into a file to cre
 ## Getting Started
 
 1. **Install TaskGraphFS:**
+
+   Clone and build from source:
    ```bash
-   go install github.com/company/task-graph-fs/cmd/tgfs@latest
+   # Clone the repository
+   git clone https://github.com/zackiles/task-graph-fs
+   cd task-graph-fs
+
+   # Build and install globally
+   make install
    ```
+
+   Or download a pre-built binary from the releases page (once available).
 
 2. **Initialize a Workflow:**
    ```bash
